@@ -1,0 +1,6 @@
+feemodeldata (unreleased)
+-------------------------
+
+Contains the scripts needed to collect feemodel data and plot them.
+
+Used rrdtool to store the data.
