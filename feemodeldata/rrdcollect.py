@@ -102,7 +102,7 @@ class RRDCollect(StoppableThread):
         try:
             trans_stats = self.apiclient.get_transient()
             mempoolsize = trans_stats['mempoolsize']
-            txbyterate = interpolate(
+            txbyterate, _dum = interpolate(
                 minrelaytxfee,
                 trans_stats['cap']['feerates'],
                 trans_stats['cap']['tx_byterates'])
@@ -140,4 +140,5 @@ def main():
     filehandler.setLevel(logging.DEBUG)
     filehandler.setFormatter(formatter)
     logger.setLevel(logging.DEBUG)
+    logger.addHandler(filehandler)
     RRDCollect().run()
