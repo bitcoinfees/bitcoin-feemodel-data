@@ -12,6 +12,7 @@ from feemodel.apiclient import APIClient
 
 STEP = 60
 RRDFILE = os.path.join(datadir, 'feedata.rrd')
+RRDLOGFILE = os.path.join(datadir, 'rrd.log')
 DATASOURCES = [
     "DS:fee12:GAUGE:{}:0:U".format(str(3*STEP)),
     "DS:fee20:GAUGE:{}:0:U".format(str(3*STEP)),
@@ -133,10 +134,9 @@ class RRDCollect(StoppableThread):
 
 
 def main():
-    logfile = os.path.join(datadir, 'rrd.log')
     formatter = logging.Formatter(
         '%(asctime)s:%(name)s [%(levelname)s] %(message)s')
-    filehandler = logging.FileHandler(logfile)
+    filehandler = logging.FileHandler(RRDLOGFILE)
     filehandler.setLevel(logging.DEBUG)
     filehandler.setFormatter(formatter)
     logger.setLevel(logging.DEBUG)
