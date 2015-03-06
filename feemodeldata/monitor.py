@@ -6,7 +6,7 @@ import smtplib
 import logging
 import logging.handlers
 import socket
-from time import time
+from time import time, sleep
 from email.mime.text import MIMEText
 
 from feemodel.util import StoppableThread
@@ -48,16 +48,13 @@ class HeartbeatNode(StoppableThread):
 
     @StoppableThread.auto_restart(10)
     def run(self):
-        self.last_heartbeat = int(time())
-        listenthread = threading.Thread(target=self.listen_heartbeat)
-        listenthread.start()
+        self.start_listen()
         try:
             while not self.is_stopped():
                 self.update()
                 self.sleep(UPDATE_PERIOD)
         finally:
-            while listenthread.is_alive():
-                self.stop_listen()
+            self.stop_listen()
 
     def update(self):
         '''Called with UPDATE_PERIOD.'''
@@ -90,7 +87,7 @@ class HeartbeatNode(StoppableThread):
         last received heartbeat time.
         '''
         logger.info(
-            "Listening for heartbeat on port {}".format(self.counterpart[1]))
+            "Listening for heartbeat from {}:{}".format(*self.counterpart))
         while True:
             data, addr = self.sock.recvfrom(1024)
             if addr[0] == self.counterpart[0] and data == HEARTBEAT:
@@ -101,9 +98,17 @@ class HeartbeatNode(StoppableThread):
                     "TERMINATE received; stopped listening for heartbeat.")
                 break
 
+    def start_listen(self):
+        '''Start the listening thread.'''
+        self.last_heartbeat = int(time())
+        self.listenthread = threading.Thread(target=self.listen_heartbeat)
+        self.listenthread.start()
+
     def stop_listen(self):
         '''Close the listening thread.'''
-        self.sock.sendto(TERMINATE, ('127.0.0.1', HEARTBEATPORT))
+        while self.listenthread.is_alive():
+            self.sock.sendto(TERMINATE, ('127.0.0.1', HEARTBEATPORT))
+            sleep(1)
 
 
 class MonitorMonitor(HeartbeatNode):
