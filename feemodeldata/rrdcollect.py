@@ -4,6 +4,7 @@ from __future__ import division
 import os
 import rrdtool
 import logging
+import logging.handlers
 import threading
 from time import time, ctime
 from feemodel.config import datadir, minrelaytxfee
@@ -136,7 +137,8 @@ class RRDCollect(StoppableThread):
 def main():
     formatter = logging.Formatter(
         '%(asctime)s:%(name)s [%(levelname)s] %(message)s')
-    filehandler = logging.FileHandler(RRDLOGFILE)
+    filehandler = logging.handlers.RotatingFileHandler(
+        RRDLOGFILE, maxBytes=1000000, backupCount=1)
     filehandler.setLevel(logging.DEBUG)
     filehandler.setFormatter(formatter)
     logger.setLevel(logging.DEBUG)
