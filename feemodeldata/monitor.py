@@ -252,7 +252,7 @@ def loggercfg():
     formatter = logging.Formatter(
         '%(asctime)s:%(name)s [%(levelname)s] %(message)s')
     filehandler = logging.handlers.RotatingFileHandler(
-        MONITORLOGFILE, maxBytes=100000)
+        MONITORLOGFILE, maxBytes=100000, backupCount=1)
     filehandler.setLevel(logging.DEBUG)
     filehandler.setFormatter(formatter)
     logger.setLevel(logging.DEBUG)
