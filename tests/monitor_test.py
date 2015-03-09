@@ -1,6 +1,7 @@
 import os
 import unittest
 import logging
+import logging.handlers
 from time import sleep
 
 import feemodeldata.monitor as monitor
@@ -17,7 +18,7 @@ monitor.HEARTBEAT_TIMEOUT = 10
 logger = logging.getLogger('monitor_test')
 logger.setLevel(logging.DEBUG)
 formatter = logging.Formatter("%(asctime)s %(name)s [%(levelname)s]: %(message)s")
-handler = logging.FileHandler(logfile)
+handler = logging.handlers.RotatingFileHandler(logfile, maxBytes=500, backupCount=1)
 handler.setLevel(logging.DEBUG)
 handler.setFormatter(formatter)
 logger.addHandler(handler)
@@ -41,9 +42,23 @@ class MonitorTest(unittest.TestCase):
             sleep(15)
             # Email for no heartbeat
 
+    def test_B(self):
+        '''
+        Test detecting of new entries when rotating file handler
+        does a rollover.
+        '''
+        monitor = Monitor()
+        with monitor.context_start():
+            for i in range(30):
+                logger.info("heartbeat")
+                sleep(1)
+                # We shouldn't get an error
+
     def tearDown(self):
-        if os.path.exists(logfile):
-            os.remove(logfile)
+        files = os.listdir('.')
+        for filename in files:
+            if filename.startswith(logfile):
+                os.remove(filename)
 
 
 class MonitorMonitorTest(unittest.TestCase):
