@@ -137,6 +137,7 @@ class Monitor(HeartbeatNode):
             logger.warning("No monitormonitor ip set.")
             monitormonitor_ip = ''
         super(Monitor, self).__init__(monitormonitor_ip)
+        self.logmonitors = []
 
     def run(self):
         try:

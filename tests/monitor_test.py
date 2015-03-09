@@ -27,9 +27,13 @@ logger.addHandler(handler)
 
 
 class MonitorTest(unittest.TestCase):
+    def setUp(self):
+        with open(logfile, "w") as f:
+            pass
 
     def test_A(self):
         '''Send notification emails.'''
+        print("Starting test A - basic error tests")
         monitor = Monitor()
         with monitor.context_start():
             sleep(3)
@@ -47,6 +51,7 @@ class MonitorTest(unittest.TestCase):
         Test detecting of new entries when rotating file handler
         does a rollover.
         '''
+        print("Starting test B - detecting of new entries upon file rotation.")
         monitor = Monitor()
         with monitor.context_start():
             for i in range(30):
@@ -66,7 +71,7 @@ class MonitorMonitorTest(unittest.TestCase):
     def test_A(self):
         mm = MonitorMonitor()
         with mm.context_start():
-            sleep(15)
+            sleep(20)
             # Email for no heartbeat
 
 if __name__ == '__main__':
