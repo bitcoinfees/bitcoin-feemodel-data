@@ -13,7 +13,8 @@ setup(
         'console_scripts': [
             'feemodel-rrd = feemodeldata.rrdcollect:main',
             'feemodel-monitor = feemodeldata.monitor:monitor',
-            'feemodel-monitormonitor = feemodeldata.monitor:monitormonitor'
+            'feemodel-monitormonitor = feemodeldata.monitor:monitormonitor',
+            'feemodel-plot = feemodeldata.plotdata:main'
         ]
     }
 )

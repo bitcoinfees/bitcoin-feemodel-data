@@ -13,13 +13,14 @@ from feemodel.util import StoppableThread
 from feemodel.config import applogfile, datadir
 
 from feemodeldata.rrdcollect import RRDLOGFILE
+from feemodeldata.plotdata import PLOTLOGFILE
 
 # Period for checking for new log entries,
 # and also for sending heartbeat
 UPDATE_PERIOD = 5
 
 TIMEOUT = 300  # Notify if no new log entry for TIMEOUT seconds
-CHECKLOGFILES = [RRDLOGFILE, applogfile]
+CHECKLOGFILES = [RRDLOGFILE, PLOTLOGFILE, applogfile]
 
 HEARTBEAT = 'hb'
 HEARTBEATPORT = 8351

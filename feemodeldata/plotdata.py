@@ -1,6 +1,8 @@
 '''Plot the RRD data and also maybe some others.'''
 from __future__ import division
 
+import os
+import sys
 import logging
 from time import time
 from datetime import datetime
@@ -10,6 +12,7 @@ import plotly.plotly as py
 from plotly.graph_objs import (YAxis, XAxis, Scatter, Data, Layout,
                                Line, Figure)
 
+from feemodel.config import datadir
 from feemodeldata.rrdcollect import RRDFILE
 
 BASEDIR = 'feemodel_RRD/'
@@ -37,6 +40,7 @@ LAYOUT = Layout(
 )
 
 logger = logging.getLogger(__name__)
+PLOTLOGFILE = os.path.join(datadir, 'plotting.log')
 
 
 def rrdplot(res):
@@ -91,6 +95,8 @@ def rrdplot(res):
         py.plot(fig, filename=BASEDIR+filename)
     except Exception:
         logger.exception("Exception in plotting.")
+    else:
+        logger.info("Plotted {}".format(res))
 
 
 def downsample(data, n, cf):
@@ -114,3 +120,20 @@ def last(data):
         if d is not None:
             return d
     return None
+
+
+def main():
+    '''Entry point for console script feemodel-plot.'''
+    formatter = logging.Formatter(
+        '%(asctime)s:%(name)s [%(levelname)s] %(message)s')
+    filehandler = logging.handlers.RotatingFileHandler(
+        PLOTLOGFILE, maxBytes=1000000, backupCount=1)
+    filehandler.setLevel(logging.DEBUG)
+    filehandler.setFormatter(formatter)
+    logger.setLevel(logging.DEBUG)
+    logger.addHandler(filehandler)
+
+    resnumber = int(sys.argv[1])
+    res = RRDGRAPH_SCHEMA[resnumber]
+
+    rrdplot(res)
