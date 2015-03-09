@@ -141,11 +141,11 @@ class Monitor(HeartbeatNode):
     def run(self):
         try:
             self.logmonitors = [
-                LogMonitor(open(filename, 'r')) for filename in CHECKLOGFILES]
+                LogMonitor(filename) for filename in CHECKLOGFILES]
             super(Monitor, self).run()
         finally:
             for logmonitor in self.logmonitors:
-                logmonitor.file_obj.close()
+                logmonitor.close()
 
     def update(self):
         for logmonitor in self.logmonitors:
@@ -156,8 +156,8 @@ class Monitor(HeartbeatNode):
 class LogMonitor(object):
     '''Tracks a specific log file.'''
 
-    def __init__(self, file_obj):
-        self.file_obj = file_obj
+    def __init__(self, filename):
+        self.file_obj = open(filename, 'r')
         self.file_obj.seek(0, 2)
         self.lastnewentrytime = int(time())
 
@@ -177,12 +177,16 @@ class LogMonitor(object):
 
         Check to see if any new log entries have been written in the past
         TIMEOUT seconds. If not, send notification email.
+
+        Also, no new entries might signify a rollover in the rotating file
+        handler; we check for that.
         '''
         if currtime - self.lastnewentrytime > TIMEOUT:
-            SendErrorEmail(
-                'no new log entries in {}'.format(self.file_obj.name),
-                '').start()
-            logger.info("No new entries in {}.".format(self.file_obj.name))
+            if not self.checkrollover():
+                SendErrorEmail(
+                    'no new log entries in {}'.format(self.file_obj.name),
+                    '').start()
+                logger.info("No new entries in {}.".format(self.file_obj.name))
             self.lastnewentrytime = currtime
 
     def check_errors(self, lines):
@@ -195,6 +199,28 @@ class LogMonitor(object):
                 'WARNING/ERROR in {}'.format(self.file_obj.name),
                 lines).start()
             logger.info("WARNING/ERROR in {}".format(self.file_obj.name))
+
+    def checkrollover(self):
+        '''Check if the log file has been rotated, and reopen if so.
+
+        When using rotating file handler, we need to reopen the file everytime
+        there's a rollover.
+        '''
+        _f = open(self.file_obj.name, 'r')
+        _f.seek(0, 2)
+        if _f.tell() != self.file_obj.tell():
+            self.file_obj.close()
+            self.file_obj = _f
+            return True  # There's been a rollover
+        _f.close()
+        return False
+
+    def close(self):
+        '''Close the file.
+
+        Called by owner object, when shutting down everything.
+        '''
+        self.file_obj.close()
 
 
 class SendErrorEmail(threading.Thread):
