@@ -196,11 +196,14 @@ class LogMonitor(object):
 
         If so, send notification email.
         '''
-        if '[WARNING]' in lines or '[ERROR]' in lines:
-            SendErrorEmail(
-                'WARNING/ERROR in {}'.format(self.file_obj.name),
-                lines).start()
-            logger.info("WARNING/ERROR in {}".format(self.file_obj.name))
+        if '[ERROR]' in lines:
+            errmsg = 'ERROR in {}'.format(self.file_obj.name)
+        elif '[WARNING]' in lines:
+            errmsg = 'WARNING in {}'.format(self.file_obj.name)
+        else:
+            return
+        SendErrorEmail(errmsg, lines).start()
+        logger.info(errmsg)
 
     def checkrollover(self):
         '''Check if the log file has been rotated, and reopen if so.
