@@ -26,16 +26,15 @@ RRDGRAPH_SCHEMA = [
 LAYOUT = Layout(
     title=('Required fee rate for given average confirmation time'),
     yaxis=YAxis(
-        title='Fee rate (satoshis per kB)',
+        title='Fee rate<br>(satoshis per kB)',
         domain=[0.55, 1],
         rangemode='tozero',
     ),
     yaxis2=YAxis(
-        title='Bytes per decaminute or bytes',
+        title='Bytes or<br>Bytes per decaminute',
         domain=[0, 0.45],
         rangemode='tozero',
     ),
-    xaxis=XAxis(title='Time (UTC)'),
     xaxis2=XAxis(anchor='y2', title='Time (UTC)'),
 )
 
