@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 PLOTLOGFILE = os.path.join(datadir, 'plotting.log')
 
 
-def rrdplot(res):
+def plotlatest(res, basedir=BASEDIR):
     '''Plot the latest data from a resolution level.
 
     res is an element of RRDGRAPH_SCHEMA.
@@ -50,9 +50,22 @@ def rrdplot(res):
     interval, numpoints, filename = res
     endtime = int(time()) // interval * interval
     starttime = endtime - interval*numpoints
+    try:
+        rrdplot(starttime, endtime, interval, filename=basedir+filename)
+    except Exception:
+        logger.exception("Exception in plotting.")
+    else:
+        logger.info("Plotted {}".format(res))
+
+
+def rrdplot(starttime, endtime, interval, cf='AVERAGE', filename='test'):
+    '''Plot based on specified time range.
+
+    starttime/endtime is unix time, interval is the point spacing in seconds.
+    '''
     timerange, datasources, datapoints = rrdtool.fetch(
         RRDFILE,
-        'AVERAGE',
+        cf,
         '--resolution', str(interval),
         '--start', str(starttime),
         '--end', str(endtime)
@@ -90,12 +103,7 @@ def rrdplot(res):
         dict(y=[rate*600 if rate else None for rate in tracesdata[5]]))
     data = Data(traces)
     fig = Figure(data=data, layout=LAYOUT)
-    try:
-        py.plot(fig, filename=BASEDIR+filename)
-    except Exception:
-        logger.exception("Exception in plotting.")
-    else:
-        logger.info("Plotted {}".format(res))
+    py.plot(fig, filename=filename)
 
 
 def downsample(data, n, cf):
@@ -133,6 +141,12 @@ def main():
     logger.addHandler(filehandler)
 
     resnumber = int(sys.argv[1])
-    res = RRDGRAPH_SCHEMA[resnumber]
+    if len(sys.argv) > 2:
+        basedir = sys.argv[2]
+        if not basedir.endswith('/'):
+            basedir += '/'
+    else:
+        basedir = BASEDIR
 
-    rrdplot(res)
+    res = RRDGRAPH_SCHEMA[resnumber]
+    plotlatest(res, basedir=basedir)
