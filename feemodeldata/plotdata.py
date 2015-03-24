@@ -53,7 +53,7 @@ def plotlatest(res, basedir=BASEDIR):
     try:
         rrdplot(starttime, endtime, interval, filename=basedir+filename)
     except Exception:
-        logger.exception("Exception in plotting.")
+        logger.exception("Exception in plotting {}.".format(filename))
     else:
         logger.info("Plotted {}".format(res))
 
