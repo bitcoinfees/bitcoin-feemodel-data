@@ -8,7 +8,12 @@ setup(
     version=version,
     packages=find_packages(),
     description='feemodel data collection and presentation',
-    install_requires=['bitcoin-feemodel'],
+    install_requires=[
+        'bitcoin-feemodel',
+        'oauth2client',
+        'gspread',
+        'plotly'
+    ],
     entry_points={
         'console_scripts': [
             'feemodel-rrd = feemodeldata.rrdcollect:main',

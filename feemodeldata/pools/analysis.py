@@ -32,7 +32,7 @@ def calc_smallprop(blockthresh=10):
     totalhashrate = sum([pool.hashrate for name, pool in poolitems])
     for idx, cumprop in enumerate(
             cumsum_gen(poolitems, mapfn=prop_mapfn)):
-        if len(poolitems[idx][1].blockheights) < blockthresh:
+        if len(poolitems[idx][1].blocks) < blockthresh:
             break
 
     name, pool = poolitems[idx]
@@ -71,7 +71,7 @@ def plot_pools(propthresh=0.95, poolname=None):
 
     if pe is None:
         pe = client.get_poolsobj()
-    blockrange = (min(pe.blockmap), max(pe.blockmap)+1)
+    blockrange = (min(pe.blocksmetadata), max(pe.blocksmetadata)+1)
 
     poolitems = sorted(pe.pools.items(), key=hashrate_keyfn, reverse=True)
     totalhashrate = sum([pool.hashrate for name, pool in poolitems])
@@ -83,9 +83,9 @@ def plot_pools(propthresh=0.95, poolname=None):
         name, pool = poolitems[idx]
         if poolname is not None and name != poolname:
             continue
-        blockheights = pool.blockheights
         blockpts = []
-        for height in sorted(blockheights):
+        for block in sorted(pool.blocks, key=lambda b: b.height):
+            height = block.height
             b = MemBlock.read(height)
             if not b:
                 continue
@@ -93,7 +93,7 @@ def plot_pools(propthresh=0.95, poolname=None):
                 sfr = b.calc_stranding_feerate()['sfr']
             except Exception:
                 continue
-            blocksize = pe.blockmap[height][1]
+            blocksize = block.size
             trace_number = get_trace_number(height)
             blockpts.append(((sfr, blocksize, height), trace_number))
 
@@ -144,7 +144,7 @@ def plot_pools(propthresh=0.95, poolname=None):
         if cumhashrate > propthresh*totalhashrate:
             break
 
-        return fig_urls
+    return fig_urls
 
 
 if __name__ == "__main__":
