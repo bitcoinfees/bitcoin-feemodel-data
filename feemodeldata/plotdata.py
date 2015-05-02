@@ -72,6 +72,7 @@ def rrdplot(starttime, endtime, interval, cf='AVERAGE', filename='test'):
     )
 
     datastart, dataend, datainterval = timerange
+    # Select all but the pdistance.
     tracesdata = zip(*datapoints)[:-1]
     times = range(datastart+datainterval, dataend+datainterval, datainterval)
     if datainterval != interval:
@@ -98,9 +99,18 @@ def rrdplot(starttime, endtime, interval, cf='AVERAGE', filename='test'):
         yaxis='y2',
         line=Line(color='black', dash='dot')
     ))
+    traces[6].update(dict(
+        name='Capacity byterate',
+        xaxis='x2',
+        yaxis='y2',
+        line=Line(color='black', dash='dash')
+    ))
+
     # Convert bytes/sec to bytes/decaminute.
     traces[5].update(
         dict(y=[rate*600 if rate else None for rate in tracesdata[5]]))
+    traces[6].update(
+        dict(y=[rate*600 if rate else None for rate in tracesdata[6]]))
     data = Data(traces)
     fig = Figure(data=data, layout=LAYOUT)
     py.plot(fig, filename=filename)

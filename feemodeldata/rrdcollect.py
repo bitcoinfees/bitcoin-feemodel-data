@@ -5,10 +5,9 @@ import os
 import rrdtool
 import logging
 import logging.handlers
-import threading
 from time import time, ctime
-from feemodel.config import datadir, minrelaytxfee
-from feemodel.util import StoppableThread, interpolate
+from feemodel.config import datadir
+from feemodel.util import StoppableThread, WorkerThread
 from feemodel.apiclient import APIClient
 
 STEP = 60
@@ -21,7 +20,8 @@ DATASOURCES = [
     "DS:fee60:GAUGE:{}:0:U".format(str(3*STEP)),
     "DS:mempoolsize:GAUGE:{}:0:U".format(str(3*STEP)),
     "DS:txbyterate:GAUGE:{}:0:U".format(str(3*STEP)),
-    "DS:predictscore:GAUGE:{}:0:1".format(str(3*STEP))
+    "DS:capacity:GAUGE:{}:0:U".format(str(3*STEP)),
+    "DS:pdistance:GAUGE:{}:0:1".format(str(3*STEP))
 ]
 RRA = [
     "RRA:AVERAGE:0.5:1:10080",  # 1 week of 1 min data
@@ -50,7 +50,7 @@ def create_rrd(starttime):
 
 def update_rrd(updatetime, *args):
     '''Update the RRD.'''
-    updatestr = "{}:{}:{}:{}:{}:{}:{}:{}".format(updatetime, *args)
+    updatestr = "{}:{}:{}:{}:{}:{}:{}:{}:{}".format(updatetime, *args)
     rrdtool.update(RRDFILE, updatestr)
     logger.info("RRD updated with {}".format(updatestr))
 
@@ -61,6 +61,7 @@ class RRDCollect(StoppableThread):
     def __init__(self):
         super(RRDCollect, self).__init__()
         self.apiclient = APIClient()
+        self.worker = WorkerThread(self.update)
 
     def init_rrd(self):
         timenow = int(time())
@@ -76,23 +77,22 @@ class RRDCollect(StoppableThread):
     @StoppableThread.auto_restart(3)
     def run(self):
         self.init_rrd()
-        logger.info("Starting RRD collection, next update at {}".format(
-            ctime(self.next_update)))
-        self.sleep_till_next()
-        while not self.is_stopped():
-            threading.Thread(
-                target=self.update,
-                args=(self.next_update,),
-                name="rrdupdate"
-            ).start()
-            self.next_update += STEP
+        self.worker.start()
+        logger.info(
+            "Starting RRD collection, next update at {}".
+            format(ctime(self.next_update)))
+        try:
             self.sleep_till_next()
-        for thread in threading.enumerate():
-            if thread.name.startswith('rrdupdate'):
-                thread.join()
+            while not self.is_stopped():
+                self.worker.put(self.next_update)
+                self.next_update += STEP
+                self.sleep_till_next()
+        finally:
+            self.worker.stop()
 
     def update(self, currtime):
         measurements = []
+        # Get feerate for specified confirmation / wait time
         for conftime in [12, 20, 30, 60]:
             try:
                 fee_estimate = self.apiclient.estimatefee(conftime)['feerate']
@@ -101,29 +101,49 @@ class RRDCollect(StoppableThread):
                 fee_estimate = -1
             measurements.append(fee_estimate)
 
+        # Get mempool size with fee (i.e. total size of txs with
+        # feerate >= MINRELAYTXFEE)
         try:
-            trans_stats = self.apiclient.get_transient()
-            mempoolsize = trans_stats['mempoolsize']
-            txbyterate, _dum = interpolate(
-                minrelaytxfee,
-                trans_stats['cap']['feerates'],
-                trans_stats['cap']['tx_byterates'])
+            mempoolstats = self.apiclient.get_mempool()
+            mempoolsize = mempoolstats['sizewithfee']
         except Exception:
-            logger.exception("Error in processing transient stats.")
+            logger.exception("Exception in getting mempool stats.")
             mempoolsize = -1
+        # Get tx byterate with fee
+        try:
+            txstats = self.apiclient.get_txrate()
+            txbyterate = txstats['ratewithfee']
+        except Exception:
+            logger.exception("Exception in getting tx byterate.")
             txbyterate = -1
         measurements.extend([mempoolsize, txbyterate])
 
+        # Get pools capacity
         try:
-            predictstats = self.apiclient.get_predictscores()
+            pools_stats = self.apiclient.get_pools()
+            blockinterval = pools_stats['blockinterval']
+            expectedmaxblocksize = sum([
+                pool['proportion']*pool['maxblocksize']
+                for pool in pools_stats['pools'].values()
+                if pool['minfeerate'] < float("inf")
+            ])
         except Exception:
-            logger.exception("Error in getting predict scores.")
-            score = -1
+            logger.exception("Exception in getting pools stats.")
+            cap = None
         else:
-            num_in = sum(predictstats['num_in'])
-            num_txs = sum(predictstats['num_txs'])
-            score = num_in / num_txs
-        measurements.append(score)
+            cap = expectedmaxblocksize / blockinterval
+        measurements.append(cap)
+
+        # Get the p-distance
+        try:
+            predictstats = self.apiclient.get_prediction()
+            pdistance = predictstats['pdistance']
+        except Exception:
+            logger.exception("Exception in getting p-distance.")
+            pdistance = -1
+        measurements.append(pdistance)
+
+        # Update the RRD!
         try:
             update_rrd(currtime, *measurements)
         except Exception:
