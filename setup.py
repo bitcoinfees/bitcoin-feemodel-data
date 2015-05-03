@@ -12,7 +12,8 @@ setup(
         'bitcoin-feemodel',
         'oauth2client',
         'gspread',
-        'plotly'
+        'plotly',
+        'rrdtool'
     ],
     entry_points={
         'console_scripts': [

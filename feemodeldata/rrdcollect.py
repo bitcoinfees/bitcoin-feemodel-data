@@ -3,11 +3,12 @@ from __future__ import division
 
 import os
 import rrdtool
+import threading
 import logging
 import logging.handlers
 from time import time, ctime
 from feemodel.config import datadir
-from feemodel.util import StoppableThread, WorkerThread
+from feemodel.util import StoppableThread
 from feemodel.apiclient import APIClient
 
 STEP = 60
@@ -61,7 +62,6 @@ class RRDCollect(StoppableThread):
     def __init__(self):
         super(RRDCollect, self).__init__()
         self.apiclient = APIClient()
-        self.worker = WorkerThread(self.update)
 
     def init_rrd(self):
         timenow = int(time())
@@ -77,20 +77,20 @@ class RRDCollect(StoppableThread):
     @StoppableThread.auto_restart(3)
     def run(self):
         self.init_rrd()
-        self.worker.start()
         logger.info(
             "Starting RRD collection, next update at {}".
             format(ctime(self.next_update)))
-        try:
+        self.sleep_till_next()
+        while not self.is_stopped():
+            self.update_async(self.next_update)
+            self.next_update += STEP
             self.sleep_till_next()
-            while not self.is_stopped():
-                self.worker.put(self.next_update)
-                self.next_update += STEP
-                self.sleep_till_next()
-        finally:
-            self.worker.stop()
 
-    def update(self, currtime):
+    def update_async(self, currtime):
+        """Call self.update in a new thread."""
+        threading.Thread(target=self._update, args=(currtime,)).start()
+
+    def _update(self, currtime):
         measurements = []
         # Get feerate for specified confirmation / wait time
         for conftime in [12, 20, 30, 60]:
