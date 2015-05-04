@@ -8,17 +8,18 @@ import feemodeldata.monitor as monitor
 from feemodeldata.monitor import Monitor, MonitorMonitor
 
 logging.basicConfig(level=logging.DEBUG,
-        format="%(name)s [%(levelname)s]: %(message)s")
+                    format="%(name)s [%(levelname)s]: %(message)s")
 
 logfile = '_tmp.log'
 monitor.CHECKLOGFILES = [logfile]
-monitor.TIMEOUT = 5
 monitor.HEARTBEAT_TIMEOUT = 10
 
 logger = logging.getLogger('monitor_test')
 logger.setLevel(logging.DEBUG)
-formatter = logging.Formatter("%(asctime)s %(name)s [%(levelname)s]: %(message)s")
-handler = logging.handlers.RotatingFileHandler(logfile, maxBytes=500, backupCount=1)
+formatter = logging.Formatter(
+    "%(asctime)s %(name)s [%(levelname)s]: %(message)s")
+handler = logging.handlers.RotatingFileHandler(
+    logfile, maxBytes=500, backupCount=1)
 handler.setLevel(logging.DEBUG)
 handler.setFormatter(formatter)
 logger.addHandler(handler)
@@ -27,9 +28,10 @@ logger.addHandler(handler)
 
 
 class MonitorTest(unittest.TestCase):
-    def setUp(self):
-        with open(logfile, "w") as f:
-            pass
+
+    # def setUp(self):
+    #     with open(logfile, "w") as f:
+    #         pass
 
     def test_A(self):
         '''Send notification emails.'''
@@ -48,16 +50,17 @@ class MonitorTest(unittest.TestCase):
 
     def test_B(self):
         '''
-        Test detecting of new entries when rotating file handler
-        does a rollover.
+        Test when log file is rotated.
         '''
         print("Starting test B - detecting of new entries upon file rotation.")
         monitor = Monitor()
         with monitor.context_start():
             for i in range(30):
                 logger.info("heartbeat")
-                sleep(1)
-                # We shouldn't get an error
+                sleep(0.1)
+            # Should get error email.
+            logger.warning("Test warning")
+            sleep(7)
 
     def tearDown(self):
         files = os.listdir('.')

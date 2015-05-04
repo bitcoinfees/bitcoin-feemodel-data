@@ -1,6 +1,7 @@
 '''Monitoring of feemodel app.'''
 
 import os
+import re
 import threading
 import smtplib
 import logging
@@ -10,7 +11,8 @@ from time import time, sleep
 from email.mime.text import MIMEText
 
 from feemodel.util import StoppableThread
-from feemodel.config import applogfile, datadir
+from feemodel.config import datadir
+from feemodel.app.main import logfile as applogfile
 
 from feemodeldata.rrdcollect import RRDLOGFILE
 from feemodeldata.plotdata import PLOTLOGFILE
@@ -18,9 +20,6 @@ from feemodeldata.plotdata import PLOTLOGFILE
 # Period for checking for new log entries,
 # and also for sending heartbeat
 UPDATE_PERIOD = 5
-
-TIMEOUT = 300  # Notify if no new log entry for TIMEOUT seconds
-CHECKLOGFILES = [RRDLOGFILE, PLOTLOGFILE, applogfile]
 
 HEARTBEAT = 'hb'
 HEARTBEATPORT = 8351
@@ -31,6 +30,9 @@ smtp_lock = threading.Lock()
 logger = logging.getLogger(__name__)
 
 MONITORLOGFILE = os.path.join(datadir, 'monitor.log')
+
+# log files to check for errors / warnings
+CHECKLOGFILES = [RRDLOGFILE, PLOTLOGFILE, applogfile]
 
 
 class HeartbeatNode(StoppableThread):
@@ -77,7 +79,7 @@ class HeartbeatNode(StoppableThread):
         #              (currtime - self.last_heartbeat, HEARTBEAT_TIMEOUT))
         if currtime - self.last_heartbeat > HEARTBEAT_TIMEOUT:
             logger.info('{} no heartbeat'.format(self.counterpart[0]))
-            SendErrorEmail(
+            SendEmail(
                 '{} no heartbeat'.format(self.counterpart[0]), '').start()
             self.last_heartbeat = currtime
 
@@ -141,13 +143,11 @@ class Monitor(HeartbeatNode):
         self.logmonitors = []
 
     def run(self):
-        try:
-            self.logmonitors = [
-                LogMonitor(filename) for filename in CHECKLOGFILES]
-            super(Monitor, self).run()
-        finally:
-            for logmonitor in self.logmonitors:
-                logmonitor.close()
+        self.logmonitors = [LogMonitor(logfile) for logfile in CHECKLOGFILES]
+        for logmonitor in self.logmonitors:
+            logmonitor.add_pattern("WARNING", emailcallback)
+            logmonitor.add_pattern("ERROR", emailcallback)
+        super(Monitor, self).run()
 
     def update(self):
         for logmonitor in self.logmonitors:
@@ -156,85 +156,74 @@ class Monitor(HeartbeatNode):
 
 
 class LogMonitor(object):
-    '''Tracks a specific log file.'''
+    """Tracks a specific log file.
+
+    self.update is called with period UPDATE_PERIOD. A regex search is made
+    in the latest logfile lines for each user specified pattern, and the
+    corresponding callback is called if there's a match.
+
+    taillines is the number of lines to tail each time. It should be set so
+    that the number of log lines in each UPDATE_PERIOD does not exceed
+    taillines, otherwise some lines could be missed.
+    """
 
     def __init__(self, filename):
-        self.file_obj = open(filename, 'r')
-        self.file_obj.seek(0, 2)
-        self.lastnewentrytime = int(time())
+        # Create the log file if it does not exist.
+        if not os.path.exists(filename):
+            open(filename, 'w').close()
+        self.filename = filename
+        self.patterns = []
+        self.lastpos = self._get_filesize()
+
+    def add_pattern(self, pattern, callback):
+        """Add a regex pattern to match with latest log file lines.
+
+        If there's a match, callback is called with
+        args=(self.fileobj, line, lines).
+        """
+        self.patterns.append((pattern, callback))
 
     def update(self):
-        '''Called by monitor with UPDATE_PERIOD'''
-        currtime = int(time())
-        lines = get_latest_lines(self.file_obj)
-        if lines:
-            # logger.debug("Lines is: {}".format(lines))
-            self.lastnewentrytime = currtime
-            self.check_errors(lines)
-        else:
-            self.check_newentries(currtime)
+        """Called by monitor with UPDATE_PERIOD"""
+        try:
+            lines = self.get_latest_lines()
+        except Exception:
+            logger.warning("No such logfile: {}".format(self.filename))
+        for pattern, callback in self.patterns:
+            for line in lines:
+                if re.search(pattern, line):
+                    callback(pattern, line, lines, self.filename)
 
-    def check_newentries(self, currtime):
-        '''Check for new log entries.
+    def get_latest_lines(self):
+        filesize = self._get_filesize()
+        if filesize < self.lastpos:
+            # We take it to mean that the log file was rotated.
+            self.lastpos = 0
+        with open(self.filename, "r") as f:
+            f.seek(self.lastpos)
+            lines = f.readlines()
+            self.lastpos = f.tell()
+        return lines
 
-        Check to see if any new log entries have been written in the past
-        TIMEOUT seconds. If not, send notification email.
-
-        Also, no new entries might signify a rollover in the rotating file
-        handler; we check for that.
-        '''
-        if currtime - self.lastnewentrytime > TIMEOUT:
-            if not self.checkrollover():
-                SendErrorEmail(
-                    'no new log entries in {}'.format(self.file_obj.name),
-                    '').start()
-                logger.info("No new entries in {}.".format(self.file_obj.name))
-            self.lastnewentrytime = currtime
-
-    def check_errors(self, lines):
-        '''Check for WARNING/ERROR log entries.
-
-        If so, send notification email.
-        '''
-        if '[ERROR]' in lines:
-            errmsg = 'ERROR in {}'.format(self.file_obj.name)
-        elif '[WARNING]' in lines:
-            errmsg = 'WARNING in {}'.format(self.file_obj.name)
-        else:
-            return
-        SendErrorEmail(errmsg, lines).start()
-        logger.info(errmsg)
-
-    def checkrollover(self):
-        '''Check if the log file has been rotated, and reopen if so.
-
-        When using rotating file handler, we need to reopen the file everytime
-        there's a rollover.
-        '''
-        _f = open(self.file_obj.name, 'r')
-        _f.seek(0, 2)
-        if _f.tell() != self.file_obj.tell():
-            self.file_obj.close()
-            self.file_obj = _f
-            return True  # There's been a rollover
-        _f.close()
-        return False
-
-    def close(self):
-        '''Close the file.
-
-        Called by owner object, when shutting down everything.
-        '''
-        self.file_obj.close()
+    def _get_filesize(self):
+        return os.path.getsize(self.filename)
 
 
-class SendErrorEmail(threading.Thread):
-    '''Send the error notification email.'''
+def emailcallback(pattern, line, lines, filename):
+    """Send an email with the log context, when there is a match."""
+    _dum, just_the_name = os.path.split(filename)
+    subject = "{} in {}".format(pattern, just_the_name)
+    body = ''.join(lines)
+    SendEmail(subject, body).start()
+
+
+class SendEmail(threading.Thread):
+    '''Send a text mail with specified subject and body.'''
 
     def __init__(self, subject, body):
         self.subject = subject
         self.body = body
-        super(SendErrorEmail, self).__init__()
+        super(SendEmail, self).__init__()
 
     def run(self):
         server = None
@@ -266,16 +255,6 @@ class SendErrorEmail(threading.Thread):
                     server.quit()
                 except Exception:
                     pass
-
-
-def get_latest_lines(fileobj):
-    '''Get latest lines from a file.'''
-    lines = ''
-    line = fileobj.readline()
-    while line:
-        lines += line
-        line = fileobj.readline()
-    return lines
 
 
 def loggercfg():
