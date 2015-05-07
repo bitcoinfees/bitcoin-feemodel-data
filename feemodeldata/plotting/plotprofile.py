@@ -98,18 +98,25 @@ def get_poolsgraph():
 def _filter_xaxis(trace, xthresh):
     pts = zip(trace['x'], trace['y'])
     pts = filter(lambda pt: pt[0] <= xthresh, pts)
-    trace['x'], trace['y'] = zip(*pts)
+    trace['x'], trace['y'] = map(list, zip(*pts))
     return trace
 
 
 def main(basedir=BASEDIR):
     waitsgraph = get_waitsgraph()
     maxfeerate = max(waitsgraph['x'])
+    mempoolgraph = _filter_xaxis(get_mempoolgraph(), maxfeerate)
+    txgraph = _filter_xaxis(get_txgraph(), maxfeerate)
+
+    poolsgraph = _filter_xaxis(get_poolsgraph(), maxfeerate)
+    poolsgraph['x'].append(maxfeerate)
+    poolsgraph['y'].append(poolsgraph['y'][-1])
+
     data = Data([
         waitsgraph,
-        _filter_xaxis(get_mempoolgraph(), maxfeerate),
-        _filter_xaxis(get_txgraph(), maxfeerate),
-        _filter_xaxis(get_poolsgraph(), maxfeerate)
+        mempoolgraph,
+        txgraph,
+        poolsgraph
     ])
     timestr = datetime.utcnow().ctime() + " UTC"
     layout = Layout(
