@@ -2,7 +2,6 @@
 from __future__ import division
 
 import os
-import sys
 import logging
 from time import time
 from datetime import datetime
@@ -15,7 +14,7 @@ from plotly.graph_objs import (YAxis, XAxis, Scatter, Data, Layout,
 from feemodel.config import datadir
 from feemodeldata.rrdcollect import RRDFILE
 
-BASEDIR = 'feemodel_RRD/'
+BASEDIR = 'feemodel_RRD'
 RRDGRAPH_SCHEMA = [
     (60, 180, '1m'),  # Every minute, for 3 hours.
     (1800, 60, '30m'),  # Every 30 minutes, for 1.25 days.
@@ -50,6 +49,7 @@ def plotlatest(res, basedir=BASEDIR):
     interval, numpoints, filename = res
     endtime = int(time()) // interval * interval
     starttime = endtime - interval*numpoints
+    basedir = basedir if basedir.endswith('/') else basedir + '/'
     try:
         rrdplot(starttime, endtime, interval, filename=basedir+filename)
     except Exception:
@@ -139,7 +139,7 @@ def last(data):
     return None
 
 
-def main():
+def main(resnumber, basedir=BASEDIR):
     '''Entry point for console script feemodel-plot.'''
     formatter = logging.Formatter(
         '%(asctime)s:%(name)s [%(levelname)s] %(message)s')
@@ -149,14 +149,6 @@ def main():
     filehandler.setFormatter(formatter)
     logger.setLevel(logging.DEBUG)
     logger.addHandler(filehandler)
-
-    resnumber = int(sys.argv[1])
-    if len(sys.argv) > 2:
-        basedir = sys.argv[2]
-        if not basedir.endswith('/'):
-            basedir += '/'
-    else:
-        basedir = BASEDIR
 
     res = RRDGRAPH_SCHEMA[resnumber]
     plotlatest(res, basedir=basedir)

@@ -1,8 +1,16 @@
 import logging
+import pytz
+from calendar import timegm
 from time import sleep
 from functools import wraps
 
 logger = logging.getLogger(__name__)
+
+
+def utc_to_timestamp(dt):
+    """Convert utc datetime to unix timestamp."""
+    dt_utc = pytz.utc.localize(dt)
+    return timegm(dt_utc.utctimetuple())
 
 
 def retry(wait=1, maxtimes=3):
