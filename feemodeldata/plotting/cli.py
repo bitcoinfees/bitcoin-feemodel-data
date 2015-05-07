@@ -13,10 +13,14 @@ def rrd(resnumber, basedir):
     if resnumber not in [0, 1, 2, 3]:
         click.echo("resnumber needs to be in [0, 1, 2, 3].")
         return
+    from feemodeldata.plotting import logger
     from feemodeldata.plotting.plotrrd import main, BASEDIR
     if basedir is None:
         basedir = BASEDIR
-    main(resnumber, basedir=basedir)
+    try:
+        main(resnumber, basedir=basedir)
+    except Exception:
+        logger.exception("Exception in plotting rrd.")
 
 
 @cli.command()
@@ -55,7 +59,13 @@ def waitcdf(basedir):
 @cli.command()
 @click.option("--basedir", "-d", type=click.STRING, default=None)
 def profile(basedir):
+    from feemodeldata.plotting import logger
     from feemodeldata.plotting.plotprofile import main, BASEDIR
     if basedir is None:
         basedir = BASEDIR
-    main(basedir=basedir)
+    try:
+        main(basedir=basedir)
+    except Exception:
+        logger.exception("Exception in plotting profile.")
+    else:
+        logger.info("Profile plotted.")
