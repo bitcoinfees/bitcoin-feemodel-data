@@ -15,7 +15,7 @@ from feemodel.config import datadir
 from feemodel.app.main import logfile as applogfile
 
 from feemodeldata.rrdcollect import RRDLOGFILE
-from feemodeldata.plotdata import PLOTLOGFILE
+from feemodeldata.plotting import PLOTLOGFILE
 
 # Period for checking for new log entries,
 # and also for sending heartbeat
@@ -215,6 +215,7 @@ def emailcallback(pattern, line, lines, filename):
     subject = "{} in {}".format(pattern, just_the_name)
     body = ''.join(lines)
     SendEmail(subject, body).start()
+    logger.info("{} in {}".format(pattern, filename))
 
 
 class SendEmail(threading.Thread):
