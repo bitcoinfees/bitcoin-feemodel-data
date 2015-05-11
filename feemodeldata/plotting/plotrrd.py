@@ -49,8 +49,9 @@ def plotlatest(res, basedir=BASEDIR):
     basedir = basedir if basedir.endswith('/') else basedir + '/'
     try:
         rrdplot(starttime, endtime, interval, filename=basedir+filename)
-    except Exception:
+    except Exception as e:
         logger.exception("Exception in plotting {}.".format(filename))
+        raise e
     else:
         logger.info("Plotted {}".format(res))
 
