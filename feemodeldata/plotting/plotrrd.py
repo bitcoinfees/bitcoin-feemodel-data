@@ -9,6 +9,7 @@ import plotly.plotly as py
 from plotly.graph_objs import (YAxis, XAxis, Scatter, Data, Layout,
                                Line, Figure)
 
+from feemodeldata.util import retry
 from feemodeldata.rrdcollect import RRDFILE
 from feemodeldata.plotting import logger
 
@@ -36,6 +37,7 @@ LAYOUT = Layout(
 )
 
 
+@retry(wait=1, maxtimes=3)
 def plotlatest(res, basedir=BASEDIR):
     '''Plot the latest data from a resolution level.
 
@@ -135,7 +137,5 @@ def last(data):
 
 
 def main(resnumber, basedir=BASEDIR):
-    '''Entry point for console script feemodel-plot.'''
-
     res = RRDGRAPH_SCHEMA[resnumber]
     plotlatest(res, basedir=basedir)

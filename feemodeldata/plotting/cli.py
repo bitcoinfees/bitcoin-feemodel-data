@@ -69,3 +69,31 @@ def profile(basedir):
         logger.exception("Exception in plotting profile.")
     else:
         logger.info("Profile plotted.")
+
+
+@cli.command()
+@click.option("--basedir", "-d", type=click.STRING, default=None)
+def pvals(basedir):
+    from feemodeldata.plotting import logger
+    from feemodeldata.plotting.plotpvals import main, BASEDIR
+    if basedir is None:
+        basedir = BASEDIR
+    try:
+        main(basedir=basedir)
+    except Exception:
+        logger.exception("Exception in plotting pvals.")
+    else:
+        logger.info("pvals plotted.")
+
+
+@cli.command()
+@click.argument("credentialsfile", type=click.STRING, required=True)
+def poolstable(credentialsfile):
+    from feemodeldata.plotting import logger
+    from feemodeldata.plotting.plotpools import main
+    try:
+        main(credentialsfile)
+    except Exception:
+        logger.exception("Exception in tabulating pools.")
+    else:
+        logger.info("Pools tabulated.")
