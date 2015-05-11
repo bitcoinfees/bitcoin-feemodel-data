@@ -129,7 +129,7 @@ class RRDCollect(StoppableThread):
             ])
         except Exception:
             logger.exception("Exception in getting pools stats.")
-            cap = None
+            cap = -1
         else:
             cap = expectedmaxblocksize / blockinterval
         measurements.append(cap)
