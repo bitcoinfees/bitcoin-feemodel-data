@@ -120,7 +120,7 @@ def main(basedir=BASEDIR):
     ])
     timestr = datetime.utcnow().ctime() + " UTC"
     layout = Layout(
-        title="Queue profile at {}".format(timestr),
+        title="Wait profile at {}".format(timestr),
         hovermode='closest',
         xaxis=XAxis(
             title="Feerate (satoshis per kB)",
