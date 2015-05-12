@@ -1,10 +1,7 @@
-import logging
 import pytz
 from calendar import timegm
 from time import sleep
 from functools import wraps
-
-logger = logging.getLogger(__name__)
 
 
 def utc_to_timestamp(dt):
@@ -13,7 +10,7 @@ def utc_to_timestamp(dt):
     return timegm(dt_utc.utctimetuple())
 
 
-def retry(wait=1, maxtimes=3):
+def retry(wait=1, maxtimes=3, logger=None):
     """Returns a retry decorator.
 
     Retries the decorated function until no exception is raised.
@@ -29,12 +26,14 @@ def retry(wait=1, maxtimes=3):
                     return fn(*args, **kwargs)
                 except Exception as e:
                     numtries += 1
-                    logger.exception(
-                        "{} in {}, trying again in {}s, {} of {} tries left.".
-                        format(e.__class__.__name__, fn.__name__,
-                               wait, maxtimes-numtries, maxtimes))
+                    if logger:
+                        logger.exception(
+                            "{} in {}, trying again in {}s, "
+                            "{} of {} tries left.".
+                            format(e.__class__.__name__, fn.__name__,
+                                   wait, maxtimes-numtries, maxtimes))
                     if numtries == maxtimes:
-                        return None
+                        raise e
                     sleep(wait)
         return decorated
     return decorator

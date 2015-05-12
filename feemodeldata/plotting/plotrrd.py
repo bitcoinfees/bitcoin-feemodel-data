@@ -37,7 +37,7 @@ LAYOUT = Layout(
 )
 
 
-@retry(wait=1, maxtimes=3)
+@retry(wait=1, maxtimes=3, logger=logger)
 def plotlatest(res, basedir=BASEDIR):
     '''Plot the latest data from a resolution level.
 

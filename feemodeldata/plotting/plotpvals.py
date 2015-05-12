@@ -3,7 +3,10 @@ from plotly.graph_objs import (Scatter, Figure, Layout, Data, YAxis, XAxis,
                                Line)
 
 from feemodel.app.predict import Prediction
+
+from feemodeldata.plotting import logger
 from feemodeldata.plotting.plotrrd import BASEDIR
+from feemodeldata.util import retry
 
 # FEERATES = [1000, 2000, 10000, 12000, 20000, 50000]
 FEERATES = [
@@ -38,6 +41,11 @@ def get_model_trace():
     return trace
 
 
+@retry(wait=1, maxtimes=3, logger=logger)
+def plot_with_retry(fig, filename):
+    print(py.plot(fig, filename=filename))
+
+
 def main(basedir=BASEDIR):
     heights = Prediction.get_heights()
     minheight = min(heights)
@@ -64,4 +72,4 @@ def main(basedir=BASEDIR):
     fig = Figure(data=data, layout=layout)
     basedir = basedir if basedir.endswith('/') else basedir + '/'
     filename = basedir + "pvals"
-    print py.plot(fig, filename=filename)
+    plot_with_retry(fig, filename)

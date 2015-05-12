@@ -7,7 +7,10 @@ from plotly.graph_objs import (Scatter, Figure, Layout, Data, YAxis, XAxis,
 
 from feemodel.util import cumsum_gen
 from feemodel.apiclient import client
+
+from feemodeldata.plotting import logger
 from feemodeldata.plotting.plotrrd import BASEDIR
+from feemodeldata.util import retry
 
 
 def get_waitsgraph():
@@ -102,6 +105,11 @@ def _filter_xaxis(trace, xthresh):
     return trace
 
 
+@retry(wait=1, maxtimes=3, logger=logger)
+def plot_with_retry(fig, filename):
+    print(py.plot(fig, filename=filename))
+
+
 def main(basedir=BASEDIR):
     waitsgraph = get_waitsgraph()
     maxfeerate = max(waitsgraph['x'])
@@ -143,4 +151,4 @@ def main(basedir=BASEDIR):
     fig = Figure(data=data, layout=layout)
     basedir = basedir if basedir.endswith('/') else basedir + '/'
     filename = basedir + "profile"
-    print py.plot(fig, filename=filename)
+    plot_with_retry(fig, filename)

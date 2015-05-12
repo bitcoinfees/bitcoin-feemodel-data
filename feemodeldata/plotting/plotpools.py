@@ -7,6 +7,8 @@ import gspread
 from oauth2client.client import SignedJwtAssertionCredentials
 
 from feemodel.apiclient import client
+from feemodeldata.util import retry
+from feemodeldata.plotting import logger
 
 
 def get_pools_table():
@@ -35,6 +37,11 @@ def get_pools_table():
     return table, misc_stats
 
 
+@retry(wait=1, maxtimes=3, logger=logger)
+def update_with_retry(sheet, cell_list):
+    sheet.update_cells(cell_list)
+
+
 def main(credentialsfile):
     with open(credentialsfile, "r") as f:
         json_key = json.load(f)
@@ -53,10 +60,10 @@ def main(credentialsfile):
     table_list = sum(table, [])
     for cell, cellvalue in zip(cell_list, table_list):
         cell.value = cellvalue
-    pools_wks.update_cells(cell_list)
+    update_with_retry(pools_wks, cell_list)
 
     misc_wks = spreadsheet.worksheet("Misc")
     cell_list = misc_wks.range("A2:C2")
     for cell, cellvalue in zip(cell_list, misc_stats):
         cell.value = cellvalue
-    misc_wks.update_cells(cell_list)
+    update_with_retry(misc_wks, cell_list)
