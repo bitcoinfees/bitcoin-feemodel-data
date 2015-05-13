@@ -22,7 +22,7 @@ RRDGRAPH_SCHEMA = [
 ]
 
 LAYOUT = Layout(
-    title=('Required fee rate for given average confirmation time'),
+    title=('Required fee rate for given average wait time'),
     yaxis=YAxis(
         title='Fee rate<br>(satoshis per kB)',
         domain=[0.55, 1],
