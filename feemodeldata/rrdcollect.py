@@ -7,6 +7,9 @@ import threading
 import logging
 import logging.handlers
 from time import time, ctime
+
+import click
+
 from feemodel.config import datadir
 from feemodel.util import StoppableThread
 from feemodel.apiclient import APIClient
@@ -154,7 +157,14 @@ class RRDCollect(StoppableThread):
         self.sleep(max(0, self.next_update - time()))
 
 
-def main():
+@click.group()
+def cli():
+    pass
+
+
+@cli.command()
+def collect():
+    """Start RRD collection."""
     formatter = logging.Formatter(
         '%(asctime)s:%(name)s [%(levelname)s] %(message)s')
     filehandler = logging.handlers.RotatingFileHandler(
@@ -164,3 +174,27 @@ def main():
     logger.setLevel(logging.DEBUG)
     logger.addHandler(filehandler)
     RRDCollect().run()
+
+
+@cli.command()
+@click.argument("source", type=click.STRING, required=True)
+@click.argument("dest", type=click.STRING, required=True)
+def transfer(source, dest):
+    """Extend dest with source."""
+    destlast = rrdtool.last(dest)
+    timerange, datasources, datapoints = rrdtool.fetch(
+        source,
+        'AVERAGE',
+        '--start', str(destlast)
+    )
+    starttime, endtime, interval = timerange
+    correctlen = (timerange[1] - timerange[0]) / STEP
+    assert interval == STEP
+    assert correctlen == int(correctlen)
+    for t, datapoint in zip(range(starttime+STEP, endtime, STEP), datapoints):
+        updatestr = "{}:{}:{}:{}:{}:{}:{}:{}:{}".format(t, *datapoint)
+        if datapoint[1] is None:
+            click.echo("Warning, not supposed to be None!")
+            continue
+        rrdtool.update(dest, updatestr)
+        click.echo("Updated {}".format(updatestr))
