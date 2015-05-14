@@ -20,7 +20,8 @@ setup(
             'feemodel-rrd = feemodeldata.rrdcollect:cli',
             'feemodel-monitor = feemodeldata.monitor:monitor',
             'feemodel-monitormonitor = feemodeldata.monitor:monitormonitor',
-            'feemodel-plot = feemodeldata.plotting.cli:cli'
+            'feemodel-plot = feemodeldata.plotting.cli:cli',
+            'feemodel-tools = feemodeldata.tools.cli:cli'
         ]
     }
 )
