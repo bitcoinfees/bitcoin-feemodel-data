@@ -29,7 +29,7 @@ def memblocktransfer(source, dest, startheight, endheight):
     import sqlite3
     from feemodel.txmempool import MemBlock
     for height in range(startheight, endheight+1):
-        b = MemBlock.read(height)
+        b = MemBlock.read(height, dbfile=source)
         if b:
             try:
                 b.write(dest, float("inf"))
