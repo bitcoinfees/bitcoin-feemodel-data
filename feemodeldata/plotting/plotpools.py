@@ -38,7 +38,9 @@ def get_pools_table():
 
 
 @retry(wait=1, maxtimes=3, logger=logger)
-def update_with_retry(sheet, cell_list):
+def update_with_retry(sheet, cell_list, numrows=None):
+    if numrows:
+        sheet.resize(rows=numrows)
     sheet.update_cells(cell_list)
 
 
@@ -60,7 +62,7 @@ def main(credentialsfile):
     table_list = sum(table, [])
     for cell, cellvalue in zip(cell_list, table_list):
         cell.value = cellvalue
-    update_with_retry(pools_wks, cell_list)
+    update_with_retry(pools_wks, cell_list, numrows=numrows+1)
 
     misc_wks = spreadsheet.worksheet("Misc")
     cell_list = misc_wks.range("A2:C2")
