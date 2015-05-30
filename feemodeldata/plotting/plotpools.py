@@ -38,34 +38,35 @@ def get_pools_table():
 
 
 @retry(wait=1, maxtimes=3, logger=logger)
-def update_with_retry(sheet, cell_list, numrows=None):
-    if numrows:
-        sheet.resize(rows=numrows)
-    sheet.update_cells(cell_list)
-
-
-def main(credentialsfile):
-    with open(credentialsfile, "r") as f:
-        json_key = json.load(f)
-    scope = ['https://spreadsheets.google.com/feeds']
-    credentials = SignedJwtAssertionCredentials(
-        json_key['client_email'], json_key['private_key'], scope)
+def update_tables(credentials, table, misc_stats):
     gc = gspread.authorize(credentials)
     spreadsheet = gc.open("Mining Pools")
-    pools_wks = spreadsheet.worksheet("Pools")
 
-    table, misc_stats = get_pools_table()
+    pools_wks = spreadsheet.worksheet("Pools")
     numrows = len(table)
     numcols = len(table[0])
+    pools_wks.resize(rows=numrows+1)
     endcell = pools_wks.get_addr_int(numrows+1, numcols)
     cell_list = pools_wks.range('A2:' + endcell)
     table_list = sum(table, [])
     for cell, cellvalue in zip(cell_list, table_list):
         cell.value = cellvalue
-    update_with_retry(pools_wks, cell_list, numrows=numrows+1)
+    pools_wks.update_cells(cell_list)
 
     misc_wks = spreadsheet.worksheet("Misc")
     cell_list = misc_wks.range("A2:C2")
     for cell, cellvalue in zip(cell_list, misc_stats):
         cell.value = cellvalue
-    update_with_retry(misc_wks, cell_list)
+    misc_wks.update_cells(cell_list)
+
+
+def main(credentialsfile):
+    table, misc_stats = get_pools_table()
+
+    with open(credentialsfile, "r") as f:
+        json_key = json.load(f)
+    scope = ['https://spreadsheets.google.com/feeds']
+    credentials = SignedJwtAssertionCredentials(
+        json_key['client_email'], json_key['private_key'], scope)
+
+    update_tables(credentials, table, misc_stats)
