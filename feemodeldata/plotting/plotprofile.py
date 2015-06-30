@@ -131,7 +131,7 @@ def main(basedir=BASEDIR):
         title="Wait profile at {}".format(timestr),
         hovermode='closest',
         xaxis=XAxis(
-            title="Feerate (satoshis per kB)",
+            title="Fee rate (satoshis per kB)",
             rangemode="tozero"
         ),
         yaxis=YAxis(

@@ -1,5 +1,7 @@
 from __future__ import division
 
+from datetime import datetime
+
 import plotly.plotly as py
 from plotly.graph_objs import (Scatter, Figure, Layout, Data, YAxis, XAxis,
                                Line)
@@ -18,6 +20,7 @@ def plot_with_retry(fig, filename):
 
 def main(basedir=BASEDIR):
     basedir = basedir if basedir.endswith('/') else basedir + '/'
+    timestr = datetime.utcnow().ctime() + " UTC"
     pe = client.get_poolsobj()
     maxblocksizes = sorted(pe.maxblocksizes)
     minfeerates = sorted(pe.minfeerates)
@@ -28,12 +31,11 @@ def main(basedir=BASEDIR):
     trace = Scatter(
         x=minfeerates,
         y=[i/numfeerates for i in range(1, len(minfeerates)+1)],
-        name="Min feerates",
         line=Line(color='black')
     )
     layout = Layout(
-        title="Mining min feerate distribution",
-        xaxis=XAxis(title="Feerate (satoshis/kB)", rangemode="tozero"),
+        title="Min fee rate distribution at {}".format(timestr),
+        xaxis=XAxis(title="Fee rate (satoshis/kB)", rangemode="tozero"),
         yaxis=YAxis(title="Cumulative proportion", range=[0, 1])
     )
     fig = Figure(data=Data([trace]), layout=layout)
@@ -44,11 +46,10 @@ def main(basedir=BASEDIR):
     trace = Scatter(
         x=maxblocksizes,
         y=[i/len(maxblocksizes) for i in range(1, len(maxblocksizes)+1)],
-        name="Max block sizes",
         line=Line(color='black')
     )
     layout = Layout(
-        title="Mining max blocksize distribution",
+        title="Max block size distribution at {}".format(timestr),
         xaxis=XAxis(title="Block size (bytes)", rangemode="tozero"),
         yaxis=YAxis(title="Cumulative proportion", range=[0, 1])
     )
