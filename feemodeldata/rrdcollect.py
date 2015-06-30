@@ -124,17 +124,10 @@ class RRDCollect(StoppableThread):
         # Get pools capacity
         try:
             pools_stats = self.apiclient.get_pools()
-            blockinterval = pools_stats['blockinterval']
-            expectedmaxblocksize = sum([
-                pool['proportion']*pool['maxblocksize']
-                for pool in pools_stats['pools'].values()
-                if pool['minfeerate'] < float("inf")
-            ])
+            cap = pools_stats['caps'][-1]
         except Exception:
             logger.exception("Exception in getting pools stats.")
             cap = -1
-        else:
-            cap = expectedmaxblocksize / blockinterval
         measurements.append(cap)
 
         # Get the p-distance

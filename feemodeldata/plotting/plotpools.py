@@ -1,72 +1,57 @@
 from __future__ import division
 
-import json
-from datetime import datetime
-
-import gspread
-from oauth2client.client import SignedJwtAssertionCredentials
+import plotly.plotly as py
+from plotly.graph_objs import (Scatter, Figure, Layout, Data, YAxis, XAxis,
+                               Line)
 
 from feemodel.apiclient import client
-from feemodeldata.util import retry
+
 from feemodeldata.plotting import logger
-
-
-def get_pools_table():
-    pe = client.get_poolsobj()
-    poolitems = sorted(pe.pools.items(),
-                       key=lambda p: p[1].hashrate, reverse=True)
-    totalhashrate = pe.calc_totalhashrate()
-
-    table = [[
-        name,
-        pool.hashrate*1e-12,
-        pool.hashrate/totalhashrate,
-        pool.maxblocksize,
-        pool.minfeerate,
-        pool.mfrstats['abovekn'],
-        pool.mfrstats['belowkn'],
-        pool.mfrstats['mean'],
-        pool.mfrstats['std'],
-        pool.mfrstats['bias']]
-        for name, pool in poolitems]
-
-    timestamp = (datetime.utcfromtimestamp(pe.timestamp).
-                 strftime("%Y/%m/%d %H:%M"))
-    misc_stats = [totalhashrate*1e-12, 1 / pe.blockrate, timestamp]
-
-    return table, misc_stats
+from feemodeldata.plotting.plotrrd import BASEDIR
+from feemodeldata.util import retry
 
 
 @retry(wait=1, maxtimes=3, logger=logger)
-def update_tables(credentials, table, misc_stats):
-    gc = gspread.authorize(credentials)
-    spreadsheet = gc.open("Mining Pools")
-
-    pools_wks = spreadsheet.worksheet("Pools")
-    numrows = len(table)
-    numcols = len(table[0])
-    pools_wks.resize(rows=numrows+1)
-    endcell = pools_wks.get_addr_int(numrows+1, numcols)
-    cell_list = pools_wks.range('A2:' + endcell)
-    table_list = sum(table, [])
-    for cell, cellvalue in zip(cell_list, table_list):
-        cell.value = cellvalue
-    pools_wks.update_cells(cell_list)
-
-    misc_wks = spreadsheet.worksheet("Misc")
-    cell_list = misc_wks.range("A2:C2")
-    for cell, cellvalue in zip(cell_list, misc_stats):
-        cell.value = cellvalue
-    misc_wks.update_cells(cell_list)
+def plot_with_retry(fig, filename):
+    print(py.plot(fig, filename=filename))
 
 
-def main(credentialsfile):
-    table, misc_stats = get_pools_table()
+def main(basedir=BASEDIR):
+    basedir = basedir if basedir.endswith('/') else basedir + '/'
+    pe = client.get_poolsobj()
+    maxblocksizes = sorted(pe.maxblocksizes)
+    minfeerates = sorted(pe.minfeerates)
+    numfeerates = len(minfeerates)
+    minfeerates = filter(lambda f: f < float("inf"), minfeerates)
 
-    with open(credentialsfile, "r") as f:
-        json_key = json.load(f)
-    scope = ['https://spreadsheets.google.com/feeds']
-    credentials = SignedJwtAssertionCredentials(
-        json_key['client_email'], json_key['private_key'], scope)
+    # Plot minfeerates
+    trace = Scatter(
+        x=minfeerates,
+        y=[i/numfeerates for i in range(1, len(minfeerates)+1)],
+        name="Min feerates",
+        line=Line(color='black')
+    )
+    layout = Layout(
+        title="Mining min feerate distribution",
+        xaxis=XAxis(title="Feerate (satoshis/kB)", rangemode="tozero"),
+        yaxis=YAxis(title="Cumulative proportion", range=[0, 1])
+    )
+    fig = Figure(data=Data([trace]), layout=layout)
+    filename = basedir + "pools_mfr"
+    plot_with_retry(fig, filename)
 
-    update_tables(credentials, table, misc_stats)
+    # Plot maxblocksizes
+    trace = Scatter(
+        x=maxblocksizes,
+        y=[i/len(maxblocksizes) for i in range(1, len(maxblocksizes)+1)],
+        name="Max block sizes",
+        line=Line(color='black')
+    )
+    layout = Layout(
+        title="Mining max blocksize distribution",
+        xaxis=XAxis(title="Block size (bytes)", rangemode="tozero"),
+        yaxis=YAxis(title="Cumulative proportion", range=[0, 1])
+    )
+    fig = Figure(data=Data([trace]), layout=layout)
+    filename = basedir + "pools_mbs"
+    plot_with_retry(fig, filename)

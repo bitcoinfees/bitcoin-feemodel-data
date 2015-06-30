@@ -1,11 +1,9 @@
-from itertools import groupby
 from datetime import datetime
 
 import plotly.plotly as py
 from plotly.graph_objs import (Scatter, Figure, Layout, Data, YAxis, XAxis,
                                Line, Font)
 
-from feemodel.util import cumsum_gen
 from feemodel.apiclient import client
 
 from feemodeldata.plotting import logger
@@ -63,34 +61,36 @@ def get_mempoolgraph():
 
 def get_poolsgraph():
     stats = client.get_pools()
+    feerates = stats['feerates']
+    caps = [cap*600 for cap in stats['caps']]
 
-    pitems = sorted(stats['pools'].items(),
-                    key=lambda p: p[1]['minfeerate'])
+    # pitems = sorted(stats['pools'].items(),
+    #                 key=lambda p: p[1]['minfeerate'])
 
-    def mfr_keyfn(poolitem):
-        return poolitem[1]['minfeerate']
+    # def mfr_keyfn(poolitem):
+    #     return poolitem[1]['minfeerate']
 
-    def sumgroupbyterates(grouptuple):
-        feerate, feegroup = grouptuple
-        blockrate = 1 / stats['blockinterval']
-        totalhashrate = stats['totalhashrate']
-        groupbyterate = sum([
-            pool['hashrate']*pool['maxblocksize']
-            for name, pool in feegroup]) * blockrate / totalhashrate
-        return (feerate, groupbyterate)
+    # def sumgroupbyterates(grouptuple):
+    #     feerate, feegroup = grouptuple
+    #     blockrate = 1 / stats['blockinterval']
+    #     totalhashrate = stats['totalhashrate']
+    #     groupbyterate = sum([
+    #         pool['hashrate']*pool['maxblocksize']
+    #         for name, pool in feegroup]) * blockrate / totalhashrate
+    #     return (feerate, groupbyterate)
 
-    pitems = filter(lambda pitem: pitem[1]['minfeerate'] < float("inf"),
-                    pitems)
-    byterate_by_fee = map(sumgroupbyterates, groupby(pitems, mfr_keyfn))
-    feerates, byterates = zip(*byterate_by_fee)
-    feerates = [0] + list(feerates)
-    byterates = [0] + list(byterates)
-    cumbyterates = list(cumsum_gen(byterates))
+    # pitems = filter(lambda pitem: pitem[1]['minfeerate'] < float("inf"),
+    #                 pitems)
+    # byterate_by_fee = map(sumgroupbyterates, groupby(pitems, mfr_keyfn))
+    # feerates, byterates = zip(*byterate_by_fee)
+    # feerates = [0] + list(feerates)
+    # byterates = [0] + list(byterates)
+    # cumbyterates = list(cumsum_gen(byterates))
 
-    cumbyterates_decaminute = [b*600 for b in cumbyterates]
+    # cumbyterates_decaminute = [b*600 for b in cumbyterates]
     trace = Scatter(
         x=feerates,
-        y=cumbyterates_decaminute,
+        y=caps,
         name="Cumul. capacity byterate",
         mode="lines",
         line=Line(color='black', dash='dash', shape='hv')
