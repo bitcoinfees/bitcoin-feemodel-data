@@ -65,6 +65,7 @@ class RRDCollect(StoppableThread):
     def __init__(self):
         super(RRDCollect, self).__init__()
         self.apiclient = APIClient()
+        self.lock = threading.Lock()
 
     def init_rrd(self):
         timenow = int(time())
@@ -94,6 +95,9 @@ class RRDCollect(StoppableThread):
         threading.Thread(target=self._update, args=(currtime,)).start()
 
     def _update(self, currtime):
+        unlocked = self.lock.acquire(False)
+        if not unlocked:
+            return
         measurements = []
         # Get feerate for specified confirmation / wait time
         for conftime in [12, 20, 30, 60]:
@@ -144,6 +148,7 @@ class RRDCollect(StoppableThread):
             update_rrd(currtime, *measurements)
         except Exception:
             logger.exception("Error in updating RRD.")
+        self.lock.release()
 
     def sleep_till_next(self):
         '''Sleep till the next update time.'''
