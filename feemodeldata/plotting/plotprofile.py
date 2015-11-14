@@ -107,7 +107,7 @@ def _filter_xaxis(trace, xthresh):
 
 @retry(wait=1, maxtimes=3, logger=logger)
 def plot_with_retry(fig, filename):
-    print(py.plot(fig, filename=filename))
+    print(py.plot(fig, filename=filename, auto_open=False))
 
 
 def main(basedir=BASEDIR):

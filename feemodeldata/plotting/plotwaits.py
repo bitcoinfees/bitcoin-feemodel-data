@@ -80,7 +80,7 @@ def plotwaits(traces, minheight, maxheight, basedir=BASEDIR):
     fig = Figure(data=data, layout=layout)
     basedir = basedir if basedir.endswith('/') else basedir + '/'
     filename = basedir + "waits_cdf"
-    return py.plot(fig, filename=filename)
+    return py.plot(fig, filename=filename, auto_open=False)
 
 
 def main(basedir=BASEDIR):

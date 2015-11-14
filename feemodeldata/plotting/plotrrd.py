@@ -111,7 +111,7 @@ def rrdplot(starttime, endtime, interval, cf='AVERAGE', filename='test'):
         dict(y=[rate*600 if rate else None for rate in tracesdata[6]]))
     data = Data(traces)
     fig = Figure(data=data, layout=LAYOUT)
-    py.plot(fig, filename=filename)
+    py.plot(fig, filename=filename, auto_open=False)
 
 
 def downsample(data, n, cf):
