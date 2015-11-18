@@ -1,6 +1,9 @@
 import os
 import unittest
+import logging
 from feemodeldata.monitor import SendEmail
+
+logging.basicConfig()
 
 if 'FEEMODEL_SMTP_HOST' not in os.environ:
     print("SMTP settings not set.")

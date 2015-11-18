@@ -25,7 +25,7 @@ def get_waits(dbfile=PVALS_DBFILE):
             db.close()
 
 
-def get_txgroups(txs, feerates=(2000, 10000, 12000, 20000, 50000)):
+def get_txgroups(txs, feerates=(10000, 15000, 20000, 50000)):
     """Sort the txs by feerate."""
     txs.sort()
     txfeerates, _dum = zip(*txs)
