@@ -18,19 +18,29 @@ def plot_with_retry(fig, filename):
     print(py.plot(fig, filename=filename, auto_open=False))
 
 
-def main(basedir=BASEDIR):
-    basedir = basedir if basedir.endswith('/') else basedir + '/'
-    timestr = datetime.utcnow().ctime() + " UTC"
+def get_data():
     pe = client.get_poolsobj()
     maxblocksizes = sorted(pe.maxblocksizes)
     minfeerates = sorted(pe.minfeerates)
     numfeerates = len(minfeerates)
     minfeerates = filter(lambda f: f < float("inf"), minfeerates)
 
+    return [
+        minfeerates, [i/numfeerates for i in range(1, len(minfeerates)+1)],
+        maxblocksizes, [i/len(maxblocksizes)
+                        for i in range(1, len(maxblocksizes)+1)]]
+
+
+def main(basedir=BASEDIR):
+    basedir = basedir if basedir.endswith('/') else basedir + '/'
+    timestr = datetime.utcnow().ctime() + " UTC"
+
+    mfr, mfr_p, mbs, mbs_p = get_data()
+
     # Plot minfeerates
     trace = Scatter(
-        x=minfeerates,
-        y=[i/numfeerates for i in range(1, len(minfeerates)+1)],
+        x=mfr,
+        y=mfr_p,
         line=Line(color='black', shape='hv')
     )
     layout = Layout(
@@ -45,8 +55,8 @@ def main(basedir=BASEDIR):
 
     # Plot maxblocksizes
     trace = Scatter(
-        x=maxblocksizes,
-        y=[i/len(maxblocksizes) for i in range(1, len(maxblocksizes)+1)],
+        x=mbs,
+        y=mbs_p,
         line=Line(color='black', shape='hv')
     )
     layout = Layout(

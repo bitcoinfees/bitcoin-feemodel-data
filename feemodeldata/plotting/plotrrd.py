@@ -37,30 +37,40 @@ LAYOUT = Layout(
 )
 
 
-@retry(wait=1, maxtimes=3, logger=logger)
-def plotlatest(res, basedir=BASEDIR):
-    '''Plot the latest data from a resolution level.
+# #@retry(wait=1, maxtimes=3, logger=logger)
+# #def plotlatest(res, basedir=BASEDIR):
+# #    '''Plot the latest data from a resolution level.
+# #
+# #    res is an element of RRDGRAPH_SCHEMA.
+# #    '''
+# #    basedir = basedir if basedir.endswith('/') else basedir + '/'
+# #    try:
+# #        rrdplot(starttime, endtime, interval, filename=basedir+filename)
+# #    except Exception as e:
+# #        logger.exception("Exception in plotting {}.".format(filename))
+# #        raise e
+# #    else:
+# #        logger.info("Plotted {}".format(res))
 
-    res is an element of RRDGRAPH_SCHEMA.
-    '''
-    interval, numpoints, filename = res
+def plot_latest(resnumber, basedir=BASEDIR):
+    _dum0, _dum1, filename = RRDGRAPH_SCHEMA[resnumber]
+    rrdplot(*get_latest_datapoints(resnumber), filename=basedir+filename)
+
+
+def plot_custom(starttime, endtime, interval,
+                cf="AVERAGE", filename="testing/customrrd"):
+    rrdplot(*get_datapoints(starttime, endtime, interval, cf=cf),
+            filename=filename)
+
+
+def get_latest_datapoints(resnumber, cf='AVERAGE'):
+    interval, numpoints, filename = RRDGRAPH_SCHEMA[resnumber]
     endtime = int(time()) // interval * interval
     starttime = endtime - interval*numpoints
-    basedir = basedir if basedir.endswith('/') else basedir + '/'
-    try:
-        rrdplot(starttime, endtime, interval, filename=basedir+filename)
-    except Exception as e:
-        logger.exception("Exception in plotting {}.".format(filename))
-        raise e
-    else:
-        logger.info("Plotted {}".format(res))
+    return get_datapoints(starttime, endtime, interval, cf)
 
 
-def rrdplot(starttime, endtime, interval, cf='AVERAGE', filename='test'):
-    '''Plot based on specified time range.
-
-    starttime/endtime is unix time, interval is the point spacing in seconds.
-    '''
+def get_datapoints(starttime, endtime, interval, cf='AVERAGE'):
     timerange, datasources, datapoints = rrdtool.fetch(
         RRDFILE,
         cf,
@@ -68,7 +78,6 @@ def rrdplot(starttime, endtime, interval, cf='AVERAGE', filename='test'):
         '--start', str(starttime),
         '--end', str(endtime)
     )
-
     datastart, dataend, datainterval = timerange
     # Select all but the pdistance.
     tracesdata = zip(*datapoints)[:-1]
@@ -79,6 +88,18 @@ def rrdplot(starttime, endtime, interval, cf='AVERAGE', filename='test'):
         times = downsample(times, q, last)
         tracesdata = map(
             lambda datatrace: downsample(datatrace, q, average), tracesdata)
+    # Convert bytes/sec to bytes/decaminute.
+    tracesdata[5] = map(lambda rate: rate*600 if rate else None, tracesdata[5])
+    tracesdata[6] = map(lambda rate: rate*600 if rate else None, tracesdata[6])
+    return times, tracesdata
+
+
+@retry(wait=1, maxtimes=3, logger=logger)
+def rrdplot(times, tracesdata, filename='test'):
+    '''Plot based on specified time range.
+
+    starttime/endtime is unix time, interval is the point spacing in seconds.
+    '''
 
     x = [datetime.utcfromtimestamp(t) for t in times]
     traces = [Scatter(x=x, y=tracedata) for tracedata in tracesdata]
@@ -103,12 +124,6 @@ def rrdplot(starttime, endtime, interval, cf='AVERAGE', filename='test'):
         yaxis='y2',
         line=Line(color='black', dash='dash')
     ))
-
-    # Convert bytes/sec to bytes/decaminute.
-    traces[5].update(
-        dict(y=[rate*600 if rate else None for rate in tracesdata[5]]))
-    traces[6].update(
-        dict(y=[rate*600 if rate else None for rate in tracesdata[6]]))
     data = Data(traces)
     fig = Figure(data=data, layout=LAYOUT)
     py.plot(fig, filename=filename, auto_open=False)
@@ -135,8 +150,3 @@ def last(data):
         if d is not None:
             return d
     return None
-
-
-def main(resnumber, basedir=BASEDIR):
-    res = RRDGRAPH_SCHEMA[resnumber]
-    plotlatest(res, basedir=basedir)

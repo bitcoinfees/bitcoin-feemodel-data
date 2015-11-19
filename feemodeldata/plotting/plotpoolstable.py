@@ -10,6 +10,8 @@ from feemodel.apiclient import client
 from feemodeldata.util import retry
 from feemodeldata.plotting import logger
 
+# This is deprecated - mining pools are no longer identified.
+
 
 def get_pools_table():
     pe = client.get_poolsobj()
