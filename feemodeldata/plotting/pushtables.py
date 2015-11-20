@@ -64,7 +64,7 @@ def pushmining(credentialsfile):
 
     worksheet = spreadsheet.worksheet("mining_mfr")
     mfr, mfr_p = data[:2]
-    idx95 = bisect(mfr_p, 0.95)
+    idx95 = bisect(mfr_p, 0.99)
     table_cols = [mfr[:idx95], mfr_p[:idx95]]
     pushtable(worksheet, table_cols)
 
