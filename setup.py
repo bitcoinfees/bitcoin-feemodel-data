@@ -10,8 +10,8 @@ setup(
     description='feemodel data collection and presentation',
     install_requires=[
         'bitcoin-feemodel',
-        'oauth2client',
-        'gspread',
+        'oauth2client==1.5.1',
+        'gspread==0.3.0',
         'plotly',
         'click'
     ],

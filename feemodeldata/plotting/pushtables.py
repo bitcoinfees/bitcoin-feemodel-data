@@ -2,6 +2,7 @@ from __future__ import division
 
 import json
 import sys
+import os
 from datetime import datetime
 
 import gspread
@@ -26,8 +27,11 @@ def get_credentials(credentialsfile):
 
 
 def get_spreadsheet(credentialsfile):
+    spreadsheet = os.environ.get("FEEMODEL_SPREADSHEET")
+    if spreadsheet is None:
+        spreadsheet = SPREADSHEET
     gc = gspread.authorize(get_credentials(credentialsfile))
-    return gc.open(SPREADSHEET)
+    return gc.open(spreadsheet)
 
 
 def pushrrd(credentialsfile, resnumber):
