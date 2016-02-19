@@ -15,7 +15,9 @@ from feemodel.util import StoppableThread
 from feemodel.apiclient import APIClient
 
 STEP = 60
-RRDFILE = os.path.join(datadir, 'feedata.rrd')
+RRDFILE = os.environ.get("FEEMODEL_RRDFILE")
+if RRDFILE is None:
+    RRDFILE = os.path.join(datadir, 'feedata.rrd')
 RRDLOGFILE = os.path.join(datadir, 'rrd.log')
 DATASOURCES = [
     "DS:fee12:GAUGE:{}:0:U".format(str(3*STEP)),
