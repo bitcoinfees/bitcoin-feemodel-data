@@ -1,29 +1,51 @@
-from bitcoin.core import CTransaction
-from feemodel.util import proxy, save_obj, load_obj
+"""
+Script to write mempool to disk (pickle) and subsequently load it.
+Requires python-bitcoinlib > 0.5.0
+
+Use the feemodel-tools command.
+"""
+
+import pickle
+from collections import defaultdict
+from bitcoin.rpc import Proxy
+
+proxy = Proxy()
 
 
 def dump(filename):
-    mempool_txids = proxy.getrawmempool()
-    txs = [proxy.getrawtransaction(txid).serialize() for txid in mempool_txids]
-    save_obj(txs, filename)
-    print("{} txs dumped.".format(len(txs)))
+    mempool = proxy.getrawmempool(verbose=True)
+    depmap = defaultdict(set)
+    txs = {}
+    for txid, txinfo in mempool.items():
+        try:
+            tx = proxy._call("getrawtransaction", txid, 0)
+        except Exception as e:
+            print(e)
+            continue
+        depends = txinfo['depends']
+        txs[txid] = (tx, depends)
+        for dependee in depends:
+            depmap[dependee].add(txid)
+
+    with open(filename, "wb") as f:
+        pickle.dump((txs, depmap), f)
 
 
 def load(filename):
-    txs = load_obj(filename)
-    numloaded = 0
-    numpresent = 0
-    mempool_txids = proxy.getrawmempool()
-    for txser in txs:
-        tx = CTransaction.deserialize(txser)
-        if tx.GetHash() in mempool_txids:
-            numpresent += 1
-            continue
+    with open(filename, "rb") as f:
+        txs, depmap = pickle.load(f)
+    tx_nodep = [(txid, tx) for txid, (tx, depends) in txs.items()
+                if not depends]
+    numsent = 0
+    while tx_nodep:
+        txid, tx = tx_nodep.pop()
+        for dependant in depmap[txid]:
+            txs[dependant][1].remove(txid)
+            if not txs[dependant][1]:
+                tx_nodep.append((dependant, txs[dependant][0]))
         try:
-            proxy.sendrawtransaction(CTransaction.deserialize(tx))
+            proxy._call("sendrawtransaction", tx)
         except Exception as e:
             print(e)
-        else:
-            numloaded += 1
-
-    print("{} txs loaded, {} already present.".format(numloaded, numpresent))
+        numsent += 1
+    assert numsent == len(txs)
